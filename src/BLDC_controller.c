@@ -1308,3 +1308,360 @@ void BLDC_controller_initialize(void)
  *
  * [EOF]
  */
+
+
+
+/* Model step function */
+void BLDC_controller_step_left(void)
+{
+  uint8_T rtb_Sum;
+  boolean_T rtb_LogicalOperator;
+  boolean_T rtb_LogicalOperator3;
+  int32_T rtb_Abs1;
+  int8_T rtPrevAction;
+  int8_T rtAction;
+  uint8_T rtb_Sum_a;
+  int16_T rtb_Switch;
+  int16_T rtb_Switch_b;
+  int16_T rtb_Sum1;
+  int16_T rtb_Sum1_c;
+  int32_T rtb_Switch1_idx_0;
+  int32_T rtb_Switch1_idx_1;
+  uint8_T tmp;
+
+  /* Outputs for Atomic SubSystem: '<Root>/BLDC_controller' */
+  /* Sum: '<S21>/Sum' incorporates:
+   *  Gain: '<S21>/g_Ha'
+   *  Gain: '<S21>/g_Hb'
+   *  Inport: '<Root>/b_hallALeft '
+   *  Inport: '<Root>/b_hallBLeft'
+   *  Inport: '<Root>/b_hallCLeft'
+   */
+  rtb_Sum = (uint8_T)((uint32_T)(uint8_T)((uint32_T)(uint8_T)(rtU.b_hallALeft <<
+    2) + (uint8_T)(rtU.b_hallBLeft << 1)) + rtU.b_hallCLeft);
+
+  /* Logic: '<S20>/Logical Operator' incorporates:
+   *  Inport: '<Root>/b_hallALeft '
+   *  Inport: '<Root>/b_hallBLeft'
+   *  Inport: '<Root>/b_hallCLeft'
+   *  UnitDelay: '<S20>/UnitDelay'
+   *  UnitDelay: '<S20>/UnitDelay1'
+   *  UnitDelay: '<S20>/UnitDelay2'
+   */
+  rtb_LogicalOperator = (boolean_T)((rtU.b_hallALeft != 0) ^ (rtU.b_hallBLeft !=
+    0) ^ (rtU.b_hallCLeft != 0) ^ (rtDW.UnitDelay_DSTATE != 0) ^
+    (rtDW.UnitDelay1_DSTATE_p != 0)) ^ (rtDW.UnitDelay2_DSTATE != 0);
+
+  /* Outputs for Enabled SubSystem: '<S12>/F01_03_Direction_Detection' */
+
+  /* Selector: '<S21>/Selector' incorporates:
+   *  Constant: '<S21>/vec_hallToPos'
+   *  UnitDelay: '<S21>/UnitDelay1'
+   */
+  F01_03_Direction_Detection(rtb_LogicalOperator, rtConstP.pooled26[rtb_Sum],
+    rtDW.UnitDelay1_DSTATE_g, &rtDW.Switch2_e, &rtDW.UnitDelay1_k,
+    &rtDW.F01_03_Direction_Detection_o);
+
+  /* End of Outputs for SubSystem: '<S12>/F01_03_Direction_Detection' */
+
+  /* Logic: '<S23>/Logical Operator3' incorporates:
+   *  Constant: '<S23>/z_maxCntRst'
+   *  RelationalOperator: '<S23>/Relational Operator1'
+   *  UnitDelay: '<S23>/z_counterRawPrev'
+   */
+  rtb_LogicalOperator3 = (rtb_LogicalOperator || (rtDW.z_counterRawPrev_DSTATE >
+    rtP.z_maxCntRst));
+
+  /* Outputs for Enabled SubSystem: '<S23>/Edge_counter' */
+
+  /* Logic: '<S23>/Logical Operator2' incorporates:
+   *  UnitDelay: '<S23>/UnitDelay8'
+   */
+  Edge_counter(!rtDW.UnitDelay8_DSTATE, rtb_LogicalOperator, rtDW.Switch2_e,
+               rtDW.UnitDelay1_k, &rtDW.Sum2_l, &rtDW.Edge_counter_f);
+
+  /* End of Outputs for SubSystem: '<S23>/Edge_counter' */
+
+  /* Logic: '<S23>/Logical Operator5' incorporates:
+   *  Constant: '<S23>/z_maxCntRst2'
+   *  RelationalOperator: '<S23>/Relational Operator3'
+   *  RelationalOperator: '<S23>/Relational Operator6'
+   *  UnitDelay: '<S23>/z_counterRawPrev'
+   */
+  rtDW.LogicalOperator5 = ((rtDW.Switch2_e != rtDW.UnitDelay1_k) ||
+    (rtDW.z_counterRawPrev_DSTATE > rtP.z_maxCntRst));
+
+  /* Outputs for Atomic SubSystem: '<S23>/rising_edge' */
+  rising_edge();
+
+  /* End of Outputs for SubSystem: '<S23>/rising_edge' */
+
+  /* CombinatorialLogic: '<S29>/Logic' incorporates:
+   *  Constant: '<S23>/z_nrEdgeSpdAcv'
+   *  Memory: '<S29>/Memory'
+   *  RelationalOperator: '<S23>/Relational Operator5'
+   */
+  rtb_Switch1_idx_0 = (int32_T)(((((uint32_T)(rtDW.Sum2_l >= rtP.z_nrEdgeSpdAcv)
+    << 1) + rtDW.LogicalOperator_h) << 1) + rtDW.Memory_PreviousInput);
+  rtDW.Logic[0U] = rtConstP.pooled30[(uint32_T)rtb_Switch1_idx_0];
+  rtDW.Logic[1U] = rtConstP.pooled30[rtb_Switch1_idx_0 + 8U];
+
+  /* Outputs for Atomic SubSystem: '<S23>/falling_edge2' */
+  falling_edge2();
+
+  /* End of Outputs for SubSystem: '<S23>/falling_edge2' */
+
+  /* Switch: '<S23>/Switch' incorporates:
+   *  Logic: '<S23>/Logical Operator1'
+   *  Switch: '<S23>/Switch1'
+   *  UnitDelay: '<S23>/z_counter2'
+   *  UnitDelay: '<S23>/z_counterRawPrev'
+   */
+  if (rtb_LogicalOperator3 && rtDW.Logic[0]) {
+    rtb_Switch = rtDW.z_counterRawPrev_DSTATE;
+  } else if (rtDW.LogicalOperator) {
+    /* Switch: '<S23>/Switch1' incorporates:
+     *  Constant: '<S23>/z_maxCntRst1'
+     */
+    rtb_Switch = rtP.z_maxCntRst;
+  } else {
+    rtb_Switch = rtDW.z_counter2_DSTATE;
+  }
+
+  /* End of Switch: '<S23>/Switch' */
+
+  /* Outputs for Triggered SubSystem: '<S23>/Motor_Speed_Calculation' */
+
+  /* Outport: '<Root>/n_motLeft' */
+  Motor_Speed_Calculation(rtb_LogicalOperator3, rtb_Switch, rtDW.Switch2_e,
+    &rtY.n_motLeft, &rtDW.Motor_Speed_Calculation_m,
+    &rtPrevZCX.Motor_Speed_Calculation_m);
+
+  /* End of Outputs for SubSystem: '<S23>/Motor_Speed_Calculation' */
+
+  /* Abs: '<S15>/Abs5' incorporates:
+   *  Outport: '<Root>/n_motLeft'
+   */
+  if (rtY.n_motLeft < 0) {
+    rtb_Abs1 = -rtY.n_motLeft;
+  } else {
+    rtb_Abs1 = rtY.n_motLeft;
+  }
+
+  /* End of Abs: '<S15>/Abs5' */
+
+  /* Relay: '<S15>/Relay' */
+  if (rtb_Abs1 >= rtP.n_commDeacvHi) {
+    rtDW.Relay_Mode = true;
+  } else {
+    if (rtb_Abs1 <= rtP.n_commAcvLo) {
+      rtDW.Relay_Mode = false;
+    }
+  }
+
+  /* Switch: '<S32>/Switch1' incorporates:
+   *  Constant: '<S32>/Constant23'
+   *  UnitDelay: '<S32>/UnitDelay1'
+   */
+  if (rtb_LogicalOperator3) {
+    rtb_Sum1_c = 0;
+  } else {
+    rtb_Sum1_c = rtDW.UnitDelay1_DSTATE;
+  }
+
+  /* End of Switch: '<S32>/Switch1' */
+
+  /* Sum: '<S23>/Sum1' */
+  rtb_Sum1 = (int16_T)(1 + rtb_Sum1_c);
+
+  /* If: '<S2>/If1' incorporates:
+   *  Constant: '<S12>/z_ctrlTypSel1'
+   *  Constant: '<S21>/vec_hallToPos'
+   *  Inport: '<Root>/r_DCLeft'
+   *  Outport: '<Root>/a_elecAngleLeft'
+   *  Selector: '<S21>/Selector'
+   */
+  rtPrevAction = rtDW.If1_ActiveSubsystem;
+  rtAction = -1;
+  if (rtP.z_ctrlTypSel != 0) {
+    rtAction = 0;
+  }
+
+  rtDW.If1_ActiveSubsystem = rtAction;
+  if ((rtPrevAction != rtAction) && (rtPrevAction == 0)) {
+    F02_Electrical_Angle_Ca_Disable(&rtDW.Switch_PhaAdv_a, &rtY.a_elecAngleLeft);
+  }
+
+  if (rtAction == 0) {
+    /* Outputs for IfAction SubSystem: '<S2>/F02_Electrical_Angle_Calculation' incorporates:
+     *  ActionPort: '<S13>/Action Port'
+     */
+    F02_Electrical_Angle_Calculatio(rtU.r_DCLeft, rtConstP.pooled26[rtb_Sum],
+      rtDW.Switch2_e, rtb_Switch, rtb_Sum1, &rtDW.Switch_PhaAdv_a,
+      &rtY.a_elecAngleLeft);
+
+    /* End of Outputs for SubSystem: '<S2>/F02_Electrical_Angle_Calculation' */
+  }
+
+  /* End of If: '<S2>/If1' */
+
+  /* SwitchCase: '<S14>/Switch Case' incorporates:
+   *  Constant: '<S12>/z_ctrlTypSel1'
+   */
+  switch (rtP.z_ctrlTypSel) {
+   case 1:
+    /* Outputs for IfAction SubSystem: '<S14>/F03_01_Pure_Trapezoidal_Method' incorporates:
+     *  ActionPort: '<S41>/Action Port'
+     */
+    F03_01_Pure_Trapezoidal_Method(rtDW.Switch_PhaAdv_a, &rtDW.Merge,
+      &rtDW.Merge1, &rtDW.Merge2);
+
+    /* End of Outputs for SubSystem: '<S14>/F03_01_Pure_Trapezoidal_Method' */
+    break;
+
+   case 2:
+    /* Outputs for IfAction SubSystem: '<S14>/F03_02_Sinusoidal_Method' incorporates:
+     *  ActionPort: '<S43>/Action Port'
+     */
+    F03_02_Sinusoidal_Method(rtDW.Switch_PhaAdv_a, &rtDW.Merge, &rtDW.Merge1,
+      &rtDW.Merge2);
+
+    /* End of Outputs for SubSystem: '<S14>/F03_02_Sinusoidal_Method' */
+    break;
+
+   case 3:
+    /* Outputs for IfAction SubSystem: '<S14>/F03_02_Sinusoidal3rd_Method' incorporates:
+     *  ActionPort: '<S42>/Action Port'
+     */
+    F03_02_Sinusoidal3rd_Method(rtDW.Switch_PhaAdv_a, &rtDW.Merge, &rtDW.Merge1,
+      &rtDW.Merge2);
+
+    /* End of Outputs for SubSystem: '<S14>/F03_02_Sinusoidal3rd_Method' */
+    break;
+  }
+
+  /* End of SwitchCase: '<S14>/Switch Case' */
+
+  /* Abs: '<S15>/Abs1' incorporates:
+   *  Inport: '<Root>/r_DCLeft'
+   */
+  if (rtU.r_DCLeft < 0) {
+    rtb_Switch1_idx_0 = -rtU.r_DCLeft;
+  } else {
+    rtb_Switch1_idx_0 = rtU.r_DCLeft;
+  }
+
+  /* End of Abs: '<S15>/Abs1' */
+
+  /* Switch: '<S15>/Switch1' incorporates:
+   *  Constant: '<S12>/z_ctrlTypSel1'
+   *  Constant: '<S15>/CTRL_COMM'
+   *  Constant: '<S15>/r_commDCDeacv'
+   *  Constant: '<S21>/vec_hallToPos'
+   *  Inport: '<Root>/r_DCLeft'
+   *  Logic: '<S15>/Logical Operator3'
+   *  LookupNDDirect: '<S15>/z_commutMap_M1'
+   *  Product: '<S15>/Divide2'
+   *  Product: '<S15>/Divide4'
+   *  RelationalOperator: '<S15>/Relational Operator1'
+   *  RelationalOperator: '<S15>/Relational Operator2'
+   *  Relay: '<S15>/Relay'
+   *  Selector: '<S21>/Selector'
+   *
+   * About '<S15>/z_commutMap_M1':
+   *  2-dimensional Direct Look-Up returning a Column
+   */
+  if (rtDW.Relay_Mode && (rtb_Switch1_idx_0 > rtP.r_commDCDeacv) &&
+      (rtP.z_ctrlTypSel != 0)) {
+    rtb_Switch1_idx_0 = rtU.r_DCLeft * rtDW.Merge;
+    rtb_Switch1_idx_1 = rtU.r_DCLeft * rtDW.Merge1;
+    rtb_Abs1 = rtU.r_DCLeft * rtDW.Merge2;
+  } else {
+    if (rtConstP.pooled26[rtb_Sum] < 5) {
+      /* LookupNDDirect: '<S15>/z_commutMap_M1' incorporates:
+       *  Constant: '<S21>/vec_hallToPos'
+       *  Selector: '<S21>/Selector'
+       *
+       * About '<S15>/z_commutMap_M1':
+       *  2-dimensional Direct Look-Up returning a Column
+       */
+      tmp = rtConstP.pooled26[rtb_Sum];
+    } else {
+      /* LookupNDDirect: '<S15>/z_commutMap_M1'
+       *
+       * About '<S15>/z_commutMap_M1':
+       *  2-dimensional Direct Look-Up returning a Column
+       */
+      tmp = 5U;
+    }
+
+    /* LookupNDDirect: '<S15>/z_commutMap_M1'
+     *
+     * About '<S15>/z_commutMap_M1':
+     *  2-dimensional Direct Look-Up returning a Column
+     */
+    rtb_Abs1 = tmp * 3;
+    rtb_Switch1_idx_0 = rtU.r_DCLeft * rtConstP.pooled18[rtb_Abs1];
+    rtb_Switch1_idx_1 = rtConstP.pooled18[1 + rtb_Abs1] * rtU.r_DCLeft;
+    rtb_Abs1 = rtConstP.pooled18[2 + rtb_Abs1] * rtU.r_DCLeft;
+  }
+
+  /* End of Switch: '<S15>/Switch1' */
+
+  /* Outport: '<Root>/DC_phaALeft' incorporates:
+   *  Constant: '<S15>/Constant1'
+   *  Product: '<S15>/Divide1'
+   */
+  rtY.DC_phaALeft = rtb_Switch1_idx_0 / 1000;
+
+  /* Outport: '<Root>/DC_phaBLeft' incorporates:
+   *  Constant: '<S15>/Constant1'
+   *  Product: '<S15>/Divide1'
+   */
+  rtY.DC_phaBLeft = rtb_Switch1_idx_1 / 1000;
+
+  /* Outport: '<Root>/DC_phaCLeft' incorporates:
+   *  Constant: '<S15>/Constant1'
+   *  Product: '<S15>/Divide1'
+   */
+  rtY.DC_phaCLeft = rtb_Abs1 / 1000;
+
+
+  /* Update for UnitDelay: '<S20>/UnitDelay' incorporates:
+   *  Inport: '<Root>/b_hallALeft '
+   */
+  rtDW.UnitDelay_DSTATE = rtU.b_hallALeft;
+
+  /* Update for UnitDelay: '<S20>/UnitDelay1' incorporates:
+   *  Inport: '<Root>/b_hallBLeft'
+   */
+  rtDW.UnitDelay1_DSTATE_p = rtU.b_hallBLeft;
+
+  /* Update for UnitDelay: '<S20>/UnitDelay2' incorporates:
+   *  Inport: '<Root>/b_hallCLeft'
+   */
+  rtDW.UnitDelay2_DSTATE = rtU.b_hallCLeft;
+
+  /* Update for UnitDelay: '<S21>/UnitDelay1' incorporates:
+   *  Constant: '<S21>/vec_hallToPos'
+   *  Selector: '<S21>/Selector'
+   */
+  rtDW.UnitDelay1_DSTATE_g = rtConstP.pooled26[rtb_Sum];
+
+  /* Update for UnitDelay: '<S23>/z_counterRawPrev' */
+  rtDW.z_counterRawPrev_DSTATE = rtb_Sum1;
+
+  /* Update for UnitDelay: '<S23>/UnitDelay8' */
+  rtDW.UnitDelay8_DSTATE = rtDW.Logic[0];
+
+  /* Update for Memory: '<S29>/Memory' */
+  rtDW.Memory_PreviousInput = rtDW.Logic[0];
+
+  /* Update for UnitDelay: '<S23>/z_counter2' */
+  rtDW.z_counter2_DSTATE = rtb_Switch;
+
+  /* Update for UnitDelay: '<S32>/UnitDelay1' */
+  rtDW.UnitDelay1_DSTATE = rtb_Sum1;
+
+  /* End of Outputs for SubSystem: '<Root>/BLDC_controller' */
+}
