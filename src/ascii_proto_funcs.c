@@ -55,6 +55,10 @@ extern SPEED_DATA SpeedData;
 //////////////////////////////////////////////////////////
 
 
+extern int fine_posn;
+extern int fine_ampl;
+
+
 #if (INCLUDE_PROTOCOL == INCLUDE_PROTOCOL2)
 
 //////////////////////////////////////////////////////////
@@ -156,6 +160,14 @@ int immediate_dir(PROTOCOL_STAT *s, char byte, char *ascii_out) {
                     PWMData.pwm[0] = CLAMP(speedB * SPEED_COEFFICIENT +  steerB * STEER_COEFFICIENT, -1000, 1000);
                     sprintf(ascii_out, "speed now %d, steer now %d, pwm %ld, pwm %ld\r\n", speedB, steerB, PWMData.pwm[0], PWMData.pwm[1]);
                     break;
+                case CONTROL_TYPE_FINE:{
+                    int posn = fine_posn + dir;
+                    if (posn < 0) posn += 35;
+                    if (posn > 35) posn = 0;
+                    fine_posn = posn;
+                    sprintf(ascii_out, "find_posn %d, fine_ampl %d\r\n", fine_posn, fine_ampl);
+                    }
+                    break;
             }
             break;
 
@@ -189,6 +201,14 @@ int immediate_dir(PROTOCOL_STAT *s, char byte, char *ascii_out) {
                     PWMData.pwm[0] = CLAMP(speedB * SPEED_COEFFICIENT +  steerB * STEER_COEFFICIENT, -1000, 1000);
                     sprintf(ascii_out, "speed now %d, steer now %d, pwm %d->%ld, pwm %d->%ld\r\n", speedB, steerB, pwms[0], PWMData.pwm[0], pwms[1], PWMData.pwm[1]);
                     break;
+                case CONTROL_TYPE_FINE: {
+                    int ampl = fine_ampl + dir*10;
+                    if (ampl < 0) ampl = 0;
+                    if (ampl > 120) ampl = 120; // keep it low
+                    fine_ampl = ampl;
+                    sprintf(ascii_out, "find_posn %d, fine_ampl %d\r\n", fine_posn, fine_ampl);
+                    }
+                    break;
             }
             break;
     }
@@ -216,6 +236,7 @@ int immediate_stop(PROTOCOL_STAT *s, char byte, char *ascii_out) {
     sensor_control = 0;
 #endif
     enable = 0;
+    fine_posn = -1; // disable
     sprintf(ascii_out, "Stop set\r\n");
     return 1;
 }
@@ -562,6 +583,12 @@ int line_immediate(PROTOCOL_STAT *s, char *cmd, char *ascii_out) {
                 enable_immediate = 1;
                 control_type = CONTROL_TYPE_PWM;
                 sprintf(ascii_out, "Immediate commands enabled - WASDXHCGQ - Power (pWm) control\r\n>");
+                break;
+
+            case 'f':
+                enable_immediate = 1;
+                control_type = CONTROL_TYPE_FINE;
+                sprintf(ascii_out, "Immediate commands enabled - WASDXHCGQ - Fine control\r\n>");
                 break;
         }
     }

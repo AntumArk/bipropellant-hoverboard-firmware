@@ -312,6 +312,8 @@ extern const ConstP rtConstP;
 /* Model entry point functions */
 extern void BLDC_controller_initialize(void);
 extern void BLDC_controller_step(void);
+extern void BLDC_controller_step_left(void);
+extern void BLDC_controller_step_right(void);
 
 /*-
  * These blocks were eliminated from the model due to optimizations:

@@ -17,6 +17,10 @@ volatile int pwml = 0;
 volatile int pwmr = 0;
 
 
+int fine_posn = 0;
+int fine_ampl = 0;
+  
+
 extern volatile int speed;
 
 extern volatile adc_buf_t adc_buffer;
@@ -160,43 +164,56 @@ void DMA1_Channel1_IRQHandler() {
   }
   OverrunFlag = true;
  
-    /* Set motor inputs here */
-    // hall_ul etc. now read in hall interrupt.
+  /* Set motor inputs here */
+  // hall_ul etc. now read in hall interrupt.
 
-  __disable_irq(); // but we want all values at the same time, without interferance
-    rtU.b_hallALeft   = hall_ul;
-    rtU.b_hallBLeft   = hall_vl;
-    rtU.b_hallCLeft   = hall_wl;
-    rtU.r_DCLeft      = -pwml;
+__disable_irq(); // but we want all values at the same time, without interferance
+  rtU.b_hallALeft   = hall_ul;
+  rtU.b_hallBLeft   = hall_vl;
+  rtU.b_hallCLeft   = hall_wl;
+  rtU.r_DCLeft      = -pwml;
 
-    rtU.b_hallARight  = hall_ur;
-    rtU.b_hallBRight  = hall_vr;
-    rtU.b_hallCRight  = hall_wr;
-    rtU.r_DCRight     = -pwmr;
-  __enable_irq();
+  rtU.b_hallARight  = hall_ur;
+  rtU.b_hallBRight  = hall_vr;
+  rtU.b_hallCRight  = hall_wr;
+  rtU.r_DCRight     = -pwmr;
+__enable_irq();
 
-    /* Step the controller */
-    BLDC_controller_step();
+  /* Step the controller */
+  BLDC_controller_step_left();
+  BLDC_controller_step_right();
 
-    if ((rtU.b_hallALeft != hall_ul) || (rtU.b_hallBLeft != hall_vl) || (rtU.b_hallCLeft != hall_wl)){
-      local_hall_params[0].hall_change_in_bldc_count++;
-    }
-    if ((rtU.b_hallARight != hall_ur) || (rtU.b_hallBRight != hall_vr) || (rtU.b_hallCRight != hall_wr)){
-      local_hall_params[1].hall_change_in_bldc_count++;
-    }
 
-    /* Get motor outputs here */
+  ///rtConstP.r_sinPhaA_M1[0-35] B/C
+
+  if (fine_posn >= 0) {
+    ul = (rtConstP.pooled12[fine_posn] * fine_ampl)/1000;
+    vl = (rtConstP.pooled13[fine_posn] * fine_ampl)/1000;
+    wl = (rtConstP.pooled14[fine_posn] * fine_ampl)/1000;
+  } else {
+  /* Get motor outputs here */
     ul            = rtY.DC_phaALeft;
     vl            = rtY.DC_phaBLeft;
     wl            = rtY.DC_phaCLeft;
   // motSpeedLeft = rtY.n_motLeft;
   // motAngleLeft = rtY.a_elecAngleLeft;
+  }
 
-    ur            = rtY.DC_phaARight;
-    vr            = rtY.DC_phaBRight;
-    wr            = rtY.DC_phaCRight;
- // motSpeedRight = rtY.n_motRight;
- // motAngleRight = rtY.a_elecAngleRight;
+
+
+  if ((rtU.b_hallALeft != hall_ul) || (rtU.b_hallBLeft != hall_vl) || (rtU.b_hallCLeft != hall_wl)){
+    local_hall_params[0].hall_change_in_bldc_count++;
+  }
+  if ((rtU.b_hallARight != hall_ur) || (rtU.b_hallBRight != hall_vr) || (rtU.b_hallCRight != hall_wr)){
+    local_hall_params[1].hall_change_in_bldc_count++;
+  }
+
+
+  ur            = rtY.DC_phaARight;
+  vr            = rtY.DC_phaBRight;
+  wr            = rtY.DC_phaCRight;
+// motSpeedRight = rtY.n_motRight;
+// motAngleRight = rtY.a_elecAngleRight;
 
   /* Indicate task complete */
   OverrunFlag = false;
@@ -205,7 +222,7 @@ void DMA1_Channel1_IRQHandler() {
   LEFT_TIM->LEFT_TIM_U    = CLAMP(ul + pwm_res / 2, 10, pwm_res-10);
   LEFT_TIM->LEFT_TIM_V    = CLAMP(vl + pwm_res / 2, 10, pwm_res-10);
   LEFT_TIM->LEFT_TIM_W    = CLAMP(wl + pwm_res / 2, 10, pwm_res-10);
-
+  
   RIGHT_TIM->RIGHT_TIM_U  = CLAMP(ur + pwm_res / 2, 10, pwm_res-10);
   RIGHT_TIM->RIGHT_TIM_V  = CLAMP(vr + pwm_res / 2, 10, pwm_res-10);
   RIGHT_TIM->RIGHT_TIM_W  = CLAMP(wr + pwm_res / 2, 10, pwm_res-10);
